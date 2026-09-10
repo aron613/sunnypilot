@@ -181,6 +181,17 @@ EVENTS_SP: dict[int, dict[str, Alert | AlertCallbackType]] = {
     ET.NO_ENTRY: NoEntryAlert("Controls Mismatch: Lateral"),
   },
 
+  # the car's own lane centering has taken the steering (e.g. Palisade LX3 HDA while stock ACC is engaged):
+  # MADS pauses lateral, stays paused while this is present, and resumes silently when it clears
+  EventNameSP.stockLateralActive: {
+    ET.WARNING: Alert(
+      "Stock HDA in Control",
+      "openpilot steering paused",
+      AlertStatus.userPrompt, AlertSize.mid,
+      Priority.LOW, VisualAlert.none, AudibleAlert.none, .2),
+    ET.NO_ENTRY: NoEntryAlert("Stock HDA in Control"),
+  },
+
   EventNameSP.experimentalModeSwitched: {
     ET.WARNING: NormalPermanentAlert("Experimental Mode Switched", duration=1.5)
   },

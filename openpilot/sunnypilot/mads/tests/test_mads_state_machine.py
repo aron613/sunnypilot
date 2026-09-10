@@ -141,3 +141,33 @@ class TestMADSStateMachine(OpenpilotTestCase):
         self.state_machine.update()
         assert self.state_machine.state == state
         self.clear_events()
+
+  def test_stock_lateral_active_pauses_and_blocks_enable(self):
+    # stockLateralActive (the car's own lane centering owns steering) is a NO_ENTRY in the paused-allowed list:
+    # from enabled it must land in paused via the silent disable, and an ENABLE attempt must keep it paused
+    self.state_machine.state = State.enabled
+    self.events_sp.add(EventNameSP.stockLateralActive)
+    self.events_sp.add(EventNameSP.silentLkasDisable)
+    self.state_machine.update()
+    assert self.state_machine.state == State.paused
+    self.clear_events()
+
+    self.events_sp.add(EventNameSP.stockLateralActive)
+    self.events_sp.add(make_event([ET.ENABLE]))
+    self.state_machine.update()
+    assert self.state_machine.state == State.paused
+    self.clear_events()
+
+    # from disabled with an enable request it must also park in paused, not enabled
+    self.state_machine.state = State.disabled
+    self.events_sp.add(EventNameSP.stockLateralActive)
+    self.events_sp.add(make_event([ET.ENABLE]))
+    self.state_machine.update()
+    assert self.state_machine.state == State.paused
+    self.clear_events()
+
+    # once it clears, the silent enable resumes lateral
+    self.events_sp.add(EventNameSP.silentLkasEnable)
+    self.state_machine.update()
+    assert self.state_machine.state == State.enabled
+    self.clear_events()

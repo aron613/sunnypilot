@@ -34,6 +34,7 @@ class ModularAssistiveDrivingSystem:
     self.active = False
     self.available = False
     self.lateral_mismatch_counter = 0
+    self.stock_lateral_active = False
     self.allow_always = False
     self.no_main_cruise = False
     self.selfdrive = selfdrive
@@ -117,6 +118,15 @@ class ModularAssistiveDrivingSystem:
       self.lateral_mismatch_counter += 1
 
   def update_events(self, CS: structs.CarState):
+    # The car's own lane centering owns the steering (carStateSP.stockLateralActive, e.g. Palisade LX3 HDA while
+    # stock ACC is engaged). Pause lateral whether or not openpilot is enabled through the PCM: the ADAS ECU ignores
+    # our command in that state, so continuing to "steer" would only hide who is in control. NO_ENTRY keeps MADS
+    # paused while it lasts and the silent enable path resumes lateral when it clears.
+    if self.stock_lateral_active:
+      self.events_sp.add(EventNameSP.stockLateralActive)
+      if self.enabled:
+        self.transition_paused_state()
+
     if not self.selfdrive.enabled and self.enabled:
       if CS.standstill:
         if self.events.has(EventName.doorOpen):
@@ -207,10 +217,11 @@ class ModularAssistiveDrivingSystem:
     self.events.remove(EventName.pedalPressed)
     self.events.remove(EventName.wrongCruiseMode)
 
-  def update(self, CS: structs.CarState):
+  def update(self, CS: structs.CarState, CS_SP=None):
     if not self.enabled_toggle:
       return
 
+    self.stock_lateral_active = bool(CS_SP.stockLateralActive) if CS_SP is not None else False
     self.data_sample()
 
     self.update_events(CS)

@@ -353,6 +353,7 @@ struct OnroadEventSP @0xda96579883444c35 {
     speedLimitPending @22;
     e2eChime @23;
     laneChangeRoadEdge @24;
+    stockLateralActive @25;
   }
 }
 
@@ -446,6 +447,7 @@ struct BackupManagerSP @0xf98d843bfd7004a3 {
 
 struct CarStateSP @0xb86e6369214c01c8 {
   speedLimit @0 :Float32;
+  stockLateralActive @1 :Bool;  # the car's own lane centering owns the steering; openpilot lateral must yield
 }
 
 struct LiveMapDataSP @0xf416ec09499d9d19 {
