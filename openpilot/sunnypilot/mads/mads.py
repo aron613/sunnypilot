@@ -181,6 +181,11 @@ class ModularAssistiveDrivingSystem:
       if be.type == ButtonType.cancel:
         if not self.selfdrive.enabled and self.selfdrive.enabled_prev:
           self.events_sp.add(EventNameSP.manualLongitudinalRequired)
+      if be.type == ButtonType.lkas and be.pressed and self.stock_lateral_active:
+        # lateral is paused for the car's own system: refuse the press without changing MADS state, so that
+        # canceling cruise restores whatever MADS state existed before cruise was engaged
+        self.events_sp.add(EventNameSP.lkasBlockedByStockLateral)
+        continue
       if be.type == ButtonType.lkas and be.pressed and (CS.cruiseState.available or self.allow_always):
         if self.enabled:
           if self.selfdrive.enabled:

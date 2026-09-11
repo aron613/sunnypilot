@@ -185,11 +185,21 @@ EVENTS_SP: dict[int, dict[str, Alert | AlertCallbackType]] = {
   # MADS pauses lateral, stays paused while this is present, and resumes silently when it clears
   EventNameSP.stockLateralActive: {
     ET.WARNING: Alert(
-      "Stock HDA in Control",
       "openpilot steering paused",
+      "Steer manually",
       AlertStatus.userPrompt, AlertSize.mid,
-      Priority.LOW, VisualAlert.none, AudibleAlert.none, .2),
-    ET.NO_ENTRY: NoEntryAlert("Stock HDA in Control"),
+      Priority.LOWER, VisualAlert.none, AudibleAlert.none, .2),
+    ET.NO_ENTRY: NoEntryAlert("openpilot steering paused"),
+  },
+
+  # LFA button pressed while lateral is paused for the stock system: a no-entry style response with no state change,
+  # shown as a warning because MADS no-entry alerts are not displayed while openpilot is PCM-enabled
+  EventNameSP.lkasBlockedByStockLateral: {
+    ET.WARNING: Alert(
+      "openpilot Unavailable",
+      "Cancel cruise to resume steering",
+      AlertStatus.normal, AlertSize.mid,
+      Priority.LOW, VisualAlert.none, AudibleAlert.refuse, 3.),
   },
 
   EventNameSP.experimentalModeSwitched: {
