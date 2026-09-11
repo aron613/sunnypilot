@@ -364,6 +364,7 @@ struct CarParamsSP @0x80ae746ee2596b11 {
   pcmCruiseSpeed @3 :Bool;
   intelligentCruiseButtonManagementAvailable @4 :Bool;
   enableGasInterceptor @5 :Bool;
+  hdaSuppressionExperiment @6 :UInt8;  # Palisade LX3: 0 off, 1 A, 2 B, 3 A+B; the marker for which experiment a route ran
 
   neuralNetworkLateralControl @2 :NeuralNetworkLateralControl;
 

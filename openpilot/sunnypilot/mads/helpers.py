@@ -53,6 +53,31 @@ def set_alternative_experience(CP: structs.CarParams, CP_SP: structs.CarParamsSP
       CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.MADS_PAUSE_LATERAL_ON_BRAKE
 
 
+HDA_EXPERIMENT_FLAGS = {
+  1: HyundaiFlagsSP.CANFD_HDA_EXP_LFA_STATUS,
+  2: HyundaiFlagsSP.CANFD_HDA_EXP_LANE_BYTES,
+  3: HyundaiFlagsSP.CANFD_HDA_EXP_LFA_STATUS | HyundaiFlagsSP.CANFD_HDA_EXP_LANE_BYTES,
+}
+
+
+def set_hyundai_hda_suppression_experiment(CP_SP: structs.CarParamsSP, params: Params) -> int:
+  """Palisade LX3 only (CANFD_ADRV_LATERAL_TAKEOVER): opt-in experiments that try to keep stock HDA from taking the
+  steering when stock ACC engages. Any experiment bypasses the stock-cruise lateral gate; the ADRV relay watchdog stays
+  armed. The selection is written to CP_SP.hdaSuppressionExperiment so every route logs what ran. Off on any other car."""
+  if not (CP_SP.flags & HyundaiFlagsSP.CANFD_ADRV_LATERAL_TAKEOVER):
+    return 0
+  try:
+    experiment = int(params.get("HyundaiLx3HdaSuppressionExperiment", return_default=True) or 0)
+  except (TypeError, ValueError):
+    experiment = 0
+  if experiment not in HDA_EXPERIMENT_FLAGS:
+    experiment = 0
+  if experiment:
+    CP_SP.flags |= HDA_EXPERIMENT_FLAGS[experiment].value
+  CP_SP.hdaSuppressionExperiment = experiment
+  return experiment
+
+
 def set_car_specific_params(CP: structs.CarParams, CP_SP: structs.CarParamsSP, params: Params):
   if CP.brand == "hyundai":
     # TODO-SP: This should be separated from MADS module for future implementations
@@ -61,6 +86,8 @@ def set_car_specific_params(CP: structs.CarParams, CP_SP: structs.CarParamsSP, p
     if hyundai_cruise_main_toggleable:
       CP_SP.flags |= HyundaiFlagsSP.LONGITUDINAL_MAIN_CRUISE_TOGGLEABLE.value
       CP_SP.safetyParam |= HyundaiSafetyFlagsSP.LONG_MAIN_CRUISE_TOGGLEABLE
+
+    set_hyundai_hda_suppression_experiment(CP_SP, params)
 
   # MADS Partial Support
   # MADS is currently partially supported for these platforms due to lack of consistent states to engage controls
