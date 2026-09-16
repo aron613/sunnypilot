@@ -55,15 +55,14 @@ def set_alternative_experience(CP: structs.CarParams, CP_SP: structs.CarParamsSP
 
 HDA_EXPERIMENT_FLAGS = {
   1: HyundaiFlagsSP.CANFD_HDA_EXP_LFA_STATUS,
-  2: HyundaiFlagsSP.CANFD_HDA_EXP_LANE_BYTES,
-  3: HyundaiFlagsSP.CANFD_HDA_EXP_LFA_STATUS | HyundaiFlagsSP.CANFD_HDA_EXP_LANE_BYTES,
 }
 
 
 def set_hyundai_hda_suppression_experiment(CP_SP: structs.CarParamsSP, params: Params) -> int:
-  """Palisade LX3 only (CANFD_ADRV_LATERAL_TAKEOVER): opt-in experiments that try to keep stock HDA from taking the
-  steering when stock ACC engages. Any experiment bypasses the stock-cruise lateral gate; the ADRV relay watchdog stays
-  armed. The selection is written to CP_SP.hdaSuppressionExperiment so every route logs what ran. Off on any other car."""
+  """Palisade LX3 only (CANFD_ADRV_LATERAL_TAKEOVER): HDA suppression keeps the ADRV relaying our steering while stock
+  ACC is engaged (1, the default, verified on routes 00000035 and 00000037). 0 keeps the stock-cruise lateral gate
+  instead. Either way the ADRV relay watchdog stays armed. The selection is written to CP_SP.hdaSuppressionExperiment
+  so every route logs what ran. Anything else, and any other car, is treated as 0."""
   if not (CP_SP.flags & HyundaiFlagsSP.CANFD_ADRV_LATERAL_TAKEOVER):
     return 0
   try:

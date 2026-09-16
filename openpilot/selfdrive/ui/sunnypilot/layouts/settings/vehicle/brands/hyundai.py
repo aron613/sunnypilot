@@ -20,9 +20,9 @@ class HyundaiSettings(BrandSettings):
     self.longitudinal_tuning_item = multiple_button_item_sp(tr("Custom Longitudinal Tuning"), "", tuning_texts,
                                                             button_width=300, callback=self._on_tuning_selected,
                                                             param="HyundaiLongitudinalTuning", inline=False)
-    hda_texts = [tr("Off"), tr("Exp A"), tr("Exp B"), tr("Exp C")]
-    self.hda_experiment_item = multiple_button_item_sp(tr("LX3 HDA Suppression Experiment"), "", hda_texts,
-                                                       button_width=200, callback=self._on_hda_experiment_selected,
+    hda_texts = [tr("Off"), tr("On")]
+    self.hda_experiment_item = multiple_button_item_sp(tr("LX3 HDA Suppression"), "", hda_texts,
+                                                       button_width=250, callback=self._on_hda_experiment_selected,
                                                        param="HyundaiLx3HdaSuppressionExperiment", inline=False)
     self.items = [self.longitudinal_tuning_item, self.hda_experiment_item]
 
@@ -66,7 +66,7 @@ class HyundaiSettings(BrandSettings):
     self.longitudinal_tuning_item.action_item.set_selected_button(tuning_param)
     self.longitudinal_tuning_item.set_visible(self.alpha_long_available)
 
-    # Palisade LX3 only: opt-in HDA suppression experiments (stock cruise + openpilot lateral), default Off
+    # Palisade LX3 only: HDA suppression (stock cruise + openpilot lateral), default On
     is_lx3 = False
     if bundle:
       is_lx3 = bundle.get("platform") == CAR.HYUNDAI_PALISADE_LX3
@@ -74,10 +74,8 @@ class HyundaiSettings(BrandSettings):
       is_lx3 = ui_state.CP.carFingerprint == CAR.HYUNDAI_PALISADE_LX3
     hda_param = int(ui_state.params.get("HyundaiLx3HdaSuppressionExperiment") or "0")
     hda_descs = [
-      tr("Off: openpilot pauses steering while stock cruise is engaged (safe default)."),
-      tr("Exp A: openpilot keeps steering with cruise on and reports LFA inactive to the ADAS ECU. Watchdog drops lateral on takeover."),
-      tr("Exp B: openpilot keeps steering with cruise on and blanks two more lane-line bytes in the spoof. Watchdog drops lateral on takeover."),
-      tr("Exp C: A and B together. Watchdog drops lateral on takeover."),
+      tr("Off: openpilot pauses steering while stock cruise is engaged."),
+      tr("On: openpilot keeps steering with stock cruise on by reporting LFA inactive to the ADAS ECU. The relay watchdog drops lateral on takeover."),
     ]
     hda_desc = hda_descs[hda_param] if hda_param < len(hda_descs) else hda_descs[0]
     if not ui_state.is_offroad():

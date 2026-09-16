@@ -12,7 +12,6 @@ from openpilot.sunnypilot.mads.helpers import set_hyundai_hda_suppression_experi
 from openpilot.common.test import OpenpilotTestCase
 
 A = HyundaiFlagsSP.CANFD_HDA_EXP_LFA_STATUS.value
-B = HyundaiFlagsSP.CANFD_HDA_EXP_LANE_BYTES.value
 
 
 def params_with(value):
@@ -30,17 +29,17 @@ def cp_sp(lx3=True):
 
 class TestHdaSuppressionExperimentParam(OpenpilotTestCase):
   def test_mapping(self):
-    for value, expected_flags in ((0, 0), (1, A), (2, B), (3, A | B)):
+    for value, expected, expected_flags in ((0, 0, 0), (1, 1, A), (2, 0, 0), (3, 0, 0)):
       c = cp_sp()
-      assert set_hyundai_hda_suppression_experiment(c, params_with(value)) == value
-      assert c.flags & (A | B) == expected_flags, value
-      assert c.hdaSuppressionExperiment == value
+      assert set_hyundai_hda_suppression_experiment(c, params_with(value)) == expected
+      assert c.flags & A == expected_flags, value
+      assert c.hdaSuppressionExperiment == expected
 
   def test_default_and_garbage_are_off(self):
     for value in (None, "", "9", 7, -1, "x"):
       c = cp_sp()
       assert set_hyundai_hda_suppression_experiment(c, params_with(value)) == 0, value
-      assert c.flags & (A | B) == 0
+      assert c.flags & A == 0
       assert c.hdaSuppressionExperiment == 0
 
   def test_other_cars_ignore_the_param(self):
