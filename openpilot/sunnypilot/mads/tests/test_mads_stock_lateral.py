@@ -14,9 +14,10 @@ EventNameSP = custom.OnroadEventSP.EventName
 ButtonType = structs.CarState.ButtonEvent.Type
 
 
-def car_state_sp(stock_lateral_active):
+def car_state_sp(stock_lateral_active, hda_road_active=False):
   cs_sp = structs.CarStateSP()
   cs_sp.stockLateralActive = stock_lateral_active
+  cs_sp.hdaRoadActive = hda_road_active
   return cs_sp
 
 
@@ -58,6 +59,21 @@ class TestMadsStockLateral(OpenpilotTestCase):
         assert not self.sd.events_sp.has(EventNameSP.lkasEnable)
         assert not self.sd.events_sp.has(EventNameSP.lkasDisable)
         assert not self.sd.events_sp.has(EventNameSP.manualSteeringRequired)
+
+  def test_hda_road_raises_event_and_pauses(self):
+    self.mads.enabled = True
+    self.mads.update(make_car_state(v_ego=10.0), car_state_sp(False, hda_road_active=True))
+    assert self.sd.events_sp.has(EventNameSP.hdaRoadLateral)
+    assert not self.sd.events_sp.has(EventNameSP.stockLateralActive)
+    assert self.sd.events_sp.has(EventNameSP.silentLkasDisable)
+
+  def test_lkas_press_while_hda_road_is_refused(self):
+    self.mads.enabled = True
+    self.sd.enabled = True
+    self.mads.update(press_lkas(make_car_state(v_ego=10.0)), car_state_sp(False, hda_road_active=True))
+    assert self.sd.events_sp.has(EventNameSP.lkasBlockedByStockLateral)
+    assert not self.sd.events_sp.has(EventNameSP.manualSteeringRequired)
+    assert not self.sd.events_sp.has(EventNameSP.lkasDisable)
 
   def test_lkas_press_without_stock_lateral_still_toggles(self):
     self.mads.enabled = False

@@ -192,6 +192,17 @@ EVENTS_SP: dict[int, dict[str, Alert | AlertCallbackType]] = {
     ET.NO_ENTRY: NoEntryAlert("openpilot steering paused"),
   },
 
+  # the ADAS ECU has flagged this road as HDA-eligible with ACC engaged (Palisade LX3): it will take the steering once
+  # speed passes ~11 mph, so lateral yields first. Same MADS handling as stockLateralActive.
+  EventNameSP.hdaRoadLateral: {
+    ET.WARNING: Alert(
+      "HDA road, stock lane centering",
+      "openpilot steering paused",
+      AlertStatus.userPrompt, AlertSize.mid,
+      Priority.LOWER, VisualAlert.none, AudibleAlert.none, .2),
+    ET.NO_ENTRY: NoEntryAlert("HDA road, stock lane centering"),
+  },
+
   # LFA button pressed while lateral is paused for the stock system: a no-entry style response with no state change,
   # shown as a warning because MADS no-entry alerts are not displayed while openpilot is PCM-enabled
   EventNameSP.lkasBlockedByStockLateral: {

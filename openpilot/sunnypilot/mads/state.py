@@ -19,7 +19,7 @@ ENABLED_STATES = (State.paused, *ACTIVE_STATES)
 
 GEARS_ALLOW_PAUSED_SILENT = [EventNameSP.silentWrongGear, EventNameSP.silentReverseGear, EventNameSP.silentBrakeHold,
                              EventNameSP.silentDoorOpen, EventNameSP.silentSeatbeltNotLatched, EventNameSP.silentParkBrake,
-                             EventNameSP.stockLateralActive]
+                             EventNameSP.stockLateralActive, EventNameSP.hdaRoadLateral]
 GEARS_ALLOW_PAUSED = [EventName.wrongGear, EventName.reverseGear, EventName.brakeHold,
                       EventName.doorOpen, EventName.seatbeltNotLatched, EventName.parkBrake]
 

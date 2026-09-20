@@ -355,6 +355,7 @@ struct OnroadEventSP @0xda96579883444c35 {
     laneChangeRoadEdge @24;
     stockLateralActive @25;
     lkasBlockedByStockLateral @26;
+    hdaRoadLateral @27;
   }
 }
 
@@ -450,6 +451,7 @@ struct BackupManagerSP @0xf98d843bfd7004a3 {
 struct CarStateSP @0xb86e6369214c01c8 {
   speedLimit @0 :Float32;
   stockLateralActive @1 :Bool;  # the car's own lane centering owns the steering; openpilot lateral must yield
+  hdaRoadActive @2 :Bool;       # ADAS ECU reports HDA available on this road with ACC engaged; lateral yields before it takes over
 }
 
 struct LiveMapDataSP @0xf416ec09499d9d19 {

@@ -35,6 +35,7 @@ class ModularAssistiveDrivingSystem:
     self.available = False
     self.lateral_mismatch_counter = 0
     self.stock_lateral_active = False
+    self.hda_road_active = False
     self.allow_always = False
     self.no_main_cruise = False
     self.selfdrive = selfdrive
@@ -126,6 +127,12 @@ class ModularAssistiveDrivingSystem:
       self.events_sp.add(EventNameSP.stockLateralActive)
       if self.enabled:
         self.transition_paused_state()
+    # Same shape for an HDA-eligible road (carStateSP.hdaRoadActive): the ADAS ECU will take the steering shortly,
+    # yield before it does so the handoff is clean rather than a relay-watchdog trip.
+    if self.hda_road_active:
+      self.events_sp.add(EventNameSP.hdaRoadLateral)
+      if self.enabled:
+        self.transition_paused_state()
 
     if not self.selfdrive.enabled and self.enabled:
       if CS.standstill:
@@ -181,7 +188,7 @@ class ModularAssistiveDrivingSystem:
       if be.type == ButtonType.cancel:
         if not self.selfdrive.enabled and self.selfdrive.enabled_prev:
           self.events_sp.add(EventNameSP.manualLongitudinalRequired)
-      if be.type == ButtonType.lkas and be.pressed and self.stock_lateral_active:
+      if be.type == ButtonType.lkas and be.pressed and (self.stock_lateral_active or self.hda_road_active):
         # lateral is paused for the car's own system: refuse the press without changing MADS state, so that
         # canceling cruise restores whatever MADS state existed before cruise was engaged
         self.events_sp.add(EventNameSP.lkasBlockedByStockLateral)
@@ -227,6 +234,7 @@ class ModularAssistiveDrivingSystem:
       return
 
     self.stock_lateral_active = bool(CS_SP.stockLateralActive) if CS_SP is not None else False
+    self.hda_road_active = bool(CS_SP.hdaRoadActive) if CS_SP is not None else False
     self.data_sample()
 
     self.update_events(CS)
