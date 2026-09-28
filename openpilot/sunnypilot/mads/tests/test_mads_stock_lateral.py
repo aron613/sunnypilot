@@ -14,10 +14,12 @@ EventNameSP = custom.OnroadEventSP.EventName
 ButtonType = structs.CarState.ButtonEvent.Type
 
 
-def car_state_sp(stock_lateral_active, hda_road_active=False):
+def car_state_sp(stock_lateral_active, hda_road_active=False, lfa_off_requested=False, lfa_off_failed=False):
   cs_sp = structs.CarStateSP()
   cs_sp.stockLateralActive = stock_lateral_active
   cs_sp.hdaRoadActive = hda_road_active
+  cs_sp.stockLfaOffRequested = lfa_off_requested
+  cs_sp.stockLfaOffFailed = lfa_off_failed
   return cs_sp
 
 
@@ -67,13 +69,33 @@ class TestMadsStockLateral(OpenpilotTestCase):
     assert not self.sd.events_sp.has(EventNameSP.stockLateralActive)
     assert self.sd.events_sp.has(EventNameSP.silentLkasDisable)
 
-  def test_lkas_press_while_hda_road_is_refused(self):
+  def test_lkas_press_while_hda_road_changes_no_state_and_is_not_refused(self):
+    # the car side turns the press into an LFA-off request to the ADAS ECU and raises its own alert, so MADS must not
+    # add the refusal here, and must not toggle either
+    for selfdrive_enabled in (True, False):
+      self.mads.enabled = True
+      self.sd.enabled = selfdrive_enabled
+      self.sd.events.clear()
+      self.sd.events_sp.clear()
+      self.mads.update(press_lkas(make_car_state(v_ego=10.0)), car_state_sp(False, hda_road_active=True))
+      assert not self.sd.events_sp.has(EventNameSP.lkasBlockedByStockLateral), selfdrive_enabled
+      assert not self.sd.events_sp.has(EventNameSP.manualSteeringRequired)
+      assert not self.sd.events_sp.has(EventNameSP.lkasDisable)
+      assert not self.sd.events_sp.has(EventNameSP.lkasEnable)
+
+  def test_stock_lfa_off_request_and_failure_alerts(self):
     self.mads.enabled = True
-    self.sd.enabled = True
-    self.mads.update(press_lkas(make_car_state(v_ego=10.0)), car_state_sp(False, hda_road_active=True))
-    assert self.sd.events_sp.has(EventNameSP.lkasBlockedByStockLateral)
-    assert not self.sd.events_sp.has(EventNameSP.manualSteeringRequired)
-    assert not self.sd.events_sp.has(EventNameSP.lkasDisable)
+    self.mads.update(make_car_state(v_ego=10.0), car_state_sp(False, hda_road_active=True, lfa_off_requested=True))
+    assert self.sd.events_sp.has(EventNameSP.requestingStockLfaOff)
+    assert not self.sd.events_sp.has(EventNameSP.stockLfaOffFailed)
+    self.sd.events_sp.clear()
+    self.mads.update(make_car_state(v_ego=10.0), car_state_sp(False, hda_road_active=True, lfa_off_failed=True))
+    assert self.sd.events_sp.has(EventNameSP.stockLfaOffFailed)
+    assert not self.sd.events_sp.has(EventNameSP.requestingStockLfaOff)
+    self.sd.events_sp.clear()
+    self.mads.update(make_car_state(v_ego=10.0), car_state_sp(False))
+    assert not self.sd.events_sp.has(EventNameSP.requestingStockLfaOff)
+    assert not self.sd.events_sp.has(EventNameSP.stockLfaOffFailed)
 
   def test_lkas_press_without_stock_lateral_still_toggles(self):
     self.mads.enabled = False

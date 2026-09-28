@@ -36,6 +36,8 @@ class ModularAssistiveDrivingSystem:
     self.lateral_mismatch_counter = 0
     self.stock_lateral_active = False
     self.hda_road_active = False
+    self.stock_lfa_off_requested = False
+    self.stock_lfa_off_failed = False
     self.allow_always = False
     self.no_main_cruise = False
     self.selfdrive = selfdrive
@@ -133,6 +135,11 @@ class ModularAssistiveDrivingSystem:
       self.events_sp.add(EventNameSP.hdaRoadLateral)
       if self.enabled:
         self.transition_paused_state()
+    # the driver asked for the wheel back with the LFA button, which the car side is forwarding to the ADAS ECU
+    if self.stock_lfa_off_requested:
+      self.events_sp.add(EventNameSP.requestingStockLfaOff)
+    if self.stock_lfa_off_failed:
+      self.events_sp.add(EventNameSP.stockLfaOffFailed)
 
     if not self.selfdrive.enabled and self.enabled:
       if CS.standstill:
@@ -189,9 +196,11 @@ class ModularAssistiveDrivingSystem:
         if not self.selfdrive.enabled and self.selfdrive.enabled_prev:
           self.events_sp.add(EventNameSP.manualLongitudinalRequired)
       if be.type == ButtonType.lkas and be.pressed and (self.stock_lateral_active or self.hda_road_active):
-        # lateral is paused for the car's own system: refuse the press without changing MADS state, so that
-        # canceling cruise restores whatever MADS state existed before cruise was engaged
-        self.events_sp.add(EventNameSP.lkasBlockedByStockLateral)
+        # lateral is paused for the car's own system, so the press does not change MADS state: canceling cruise
+        # restores whatever MADS state existed before cruise was engaged. On an HDA road the car side turns the press
+        # into an LFA-off request to the ADAS ECU and raises its own alert; otherwise refuse it.
+        if not self.hda_road_active:
+          self.events_sp.add(EventNameSP.lkasBlockedByStockLateral)
         continue
       if be.type == ButtonType.lkas and be.pressed and (CS.cruiseState.available or self.allow_always):
         if self.enabled:
@@ -235,6 +244,8 @@ class ModularAssistiveDrivingSystem:
 
     self.stock_lateral_active = bool(CS_SP.stockLateralActive) if CS_SP is not None else False
     self.hda_road_active = bool(CS_SP.hdaRoadActive) if CS_SP is not None else False
+    self.stock_lfa_off_requested = bool(CS_SP.stockLfaOffRequested) if CS_SP is not None else False
+    self.stock_lfa_off_failed = bool(CS_SP.stockLfaOffFailed) if CS_SP is not None else False
     self.data_sample()
 
     self.update_events(CS)

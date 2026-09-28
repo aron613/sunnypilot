@@ -203,6 +203,25 @@ EVENTS_SP: dict[int, dict[str, Alert | AlertCallbackType]] = {
     ET.NO_ENTRY: NoEntryAlert("HDA road, stock lane centering"),
   },
 
+  # the driver pressed LFA while lateral was yielded to the car's own lane centering on an HDA road: the press is
+  # forwarded to the ADAS ECU as an LFA-off request (opendbc stock_lfa.py) instead of toggling MADS
+  EventNameSP.requestingStockLfaOff: {
+    ET.WARNING: Alert(
+      "Requesting stock LFA off",
+      "Taking back steering",
+      AlertStatus.userPrompt, AlertSize.mid,
+      Priority.LOW, VisualAlert.none, AudibleAlert.none, .2),
+  },
+
+  # the ADAS ECU did not switch its lane centering off after the last attempt
+  EventNameSP.stockLfaOffFailed: {
+    ET.WARNING: Alert(
+      "Stock lane centering will not switch off",
+      "Cancel cruise to resume steering",
+      AlertStatus.userPrompt, AlertSize.mid,
+      Priority.MID, VisualAlert.none, AudibleAlert.refuse, 3.),
+  },
+
   # LFA button pressed while lateral is paused for the stock system: a no-entry style response with no state change,
   # shown as a warning because MADS no-entry alerts are not displayed while openpilot is PCM-enabled
   EventNameSP.lkasBlockedByStockLateral: {
