@@ -77,6 +77,19 @@ def set_hyundai_hda_suppression_experiment(CP_SP: structs.CarParamsSP, params: P
   return experiment
 
 
+def set_hyundai_auto_suppress_hda(CP_SP: structs.CarParamsSP, params: Params) -> bool:
+  """Palisade LX3 only (CANFD_ADRV_LATERAL_TAKEOVER), default off: pulse the car's own lane centering off as soon as the
+  ADAS ECU arms HDA on a road, the same way a driver LFA press does. The car still nudges the wheel for 0.3-1.3 s
+  first: it switches its lane centering on 0.05 s after the HDA icon, we need 0.06 s to confirm the icon over two 20 Hz
+  messages, and it takes 0.15-0.18 s to acknowledge the press. See opendbc stock_lfa.py."""
+  if not (CP_SP.flags & HyundaiFlagsSP.CANFD_ADRV_LATERAL_TAKEOVER):
+    return False
+  if params.get_bool("HyundaiLx3AutoSuppressHda"):
+    CP_SP.flags |= HyundaiFlagsSP.CANFD_AUTO_SUPPRESS_HDA.value
+    return True
+  return False
+
+
 def set_car_specific_params(CP: structs.CarParams, CP_SP: structs.CarParamsSP, params: Params):
   if CP.brand == "hyundai":
     # TODO-SP: This should be separated from MADS module for future implementations
@@ -87,6 +100,7 @@ def set_car_specific_params(CP: structs.CarParams, CP_SP: structs.CarParamsSP, p
       CP_SP.safetyParam |= HyundaiSafetyFlagsSP.LONG_MAIN_CRUISE_TOGGLEABLE
 
     set_hyundai_hda_suppression_experiment(CP_SP, params)
+    set_hyundai_auto_suppress_hda(CP_SP, params)
 
   # MADS Partial Support
   # MADS is currently partially supported for these platforms due to lack of consistent states to engage controls

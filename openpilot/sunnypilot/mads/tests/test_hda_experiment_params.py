@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 from opendbc.car import structs
 from opendbc.sunnypilot.car.hyundai.values import HyundaiFlagsSP
-from openpilot.sunnypilot.mads.helpers import set_hyundai_hda_suppression_experiment
+from openpilot.sunnypilot.mads.helpers import set_hyundai_hda_suppression_experiment, set_hyundai_auto_suppress_hda
 from openpilot.common.test import OpenpilotTestCase
 
 A = HyundaiFlagsSP.CANFD_HDA_EXP_LFA_STATUS.value
@@ -47,3 +47,29 @@ class TestHdaSuppressionExperimentParam(OpenpilotTestCase):
     assert set_hyundai_hda_suppression_experiment(c, params_with(3)) == 0
     assert c.flags == 0
     assert c.hdaSuppressionExperiment == 0
+
+
+B = HyundaiFlagsSP.CANFD_AUTO_SUPPRESS_HDA.value
+
+
+def params_bool(value):
+  params = MagicMock()
+  params.get_bool = MagicMock(return_value=value)
+  return params
+
+
+class TestAutoSuppressHdaParam(OpenpilotTestCase):
+  def test_off_by_default(self):
+    c = cp_sp()
+    assert set_hyundai_auto_suppress_hda(c, params_bool(False)) is False
+    assert c.flags & B == 0
+
+  def test_on_sets_the_flag(self):
+    c = cp_sp()
+    assert set_hyundai_auto_suppress_hda(c, params_bool(True)) is True
+    assert c.flags & B == B
+
+  def test_other_cars_never_get_it(self):
+    c = cp_sp(lx3=False)
+    assert set_hyundai_auto_suppress_hda(c, params_bool(True)) is False
+    assert c.flags & B == 0

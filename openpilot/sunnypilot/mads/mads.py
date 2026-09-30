@@ -9,6 +9,7 @@ from openpilot.cereal import log, custom
 
 from opendbc.car import structs
 from opendbc.car.hyundai.values import HyundaiFlags
+from opendbc.sunnypilot.car.hyundai.values import HyundaiFlagsSP
 from openpilot.common.params import Params
 from openpilot.sunnypilot.mads.helpers import MadsSteeringModeOnBrake, read_steering_mode_param, MADS_NO_ACC_MAIN_BUTTON
 from openpilot.sunnypilot.mads.state import StateMachine, GEARS_ALLOW_PAUSED_SILENT
@@ -38,6 +39,9 @@ class ModularAssistiveDrivingSystem:
     self.hda_road_active = False
     self.stock_lfa_off_requested = False
     self.stock_lfa_off_failed = False
+    self.stock_lfa_auto_suppressing = False
+    self.stock_lfa_auto_suppress_failed = False
+    self.separate_engage = False
     self.allow_always = False
     self.no_main_cruise = False
     self.selfdrive = selfdrive
@@ -60,6 +64,10 @@ class ModularAssistiveDrivingSystem:
     self.main_enabled_toggle = self.params.get_bool("MadsMainCruiseAllowed")
     self.steering_mode_on_brake = read_steering_mode_param(self.CP, self.CP_SP, self.params)
     self.unified_engagement_mode = self.params.get_bool("MadsUnifiedEngagementMode")
+    # Palisade LX3 only, default off: the LFA button engages lateral only and the cruise-main button engages cruise
+    # only, so neither drags the other along. The stock-cruise handoff is what makes this safe to use.
+    if self.CP_SP.flags & HyundaiFlagsSP.CANFD_ADRV_LATERAL_TAKEOVER:
+      self.separate_engage = self.params.get_bool("HyundaiLx3SeparateEngage")
 
   def read_params(self):
     self.main_enabled_toggle = self.params.get_bool("MadsMainCruiseAllowed")
@@ -140,6 +148,11 @@ class ModularAssistiveDrivingSystem:
       self.events_sp.add(EventNameSP.requestingStockLfaOff)
     if self.stock_lfa_off_failed:
       self.events_sp.add(EventNameSP.stockLfaOffFailed)
+    # auto-suppress (opt-in) doing the same thing without being asked
+    if self.stock_lfa_auto_suppressing:
+      self.events_sp.add(EventNameSP.suppressingStockLfa)
+    if self.stock_lfa_auto_suppress_failed:
+      self.events_sp.add(EventNameSP.stockHdaHasSteering)
 
     if not self.selfdrive.enabled and self.enabled:
       if CS.standstill:
@@ -187,7 +200,7 @@ class ModularAssistiveDrivingSystem:
         self.events.remove(EventName.pcmEnable)
         self.events.remove(EventName.buttonEnable)
     else:
-      if self.main_enabled_toggle:
+      if self.main_enabled_toggle and not self.separate_engage:
         if CS.cruiseState.available and not self.selfdrive.CS_prev.cruiseState.available:
           self.events_sp.add(EventNameSP.lkasEnable)
 
@@ -211,7 +224,8 @@ class ModularAssistiveDrivingSystem:
         else:
           self.events_sp.add(EventNameSP.lkasEnable)
 
-    if not CS.cruiseState.available and not self.no_main_cruise:
+    # with separate engage on, the cruise-main button owns cruise only: turning it off leaves MADS lateral alone
+    if not CS.cruiseState.available and not self.no_main_cruise and not self.separate_engage:
       self.events.remove(EventName.buttonEnable)
       if self.selfdrive.CS_prev.cruiseState.available:
         self.events_sp.add(EventNameSP.lkasDisable)
@@ -246,6 +260,8 @@ class ModularAssistiveDrivingSystem:
     self.hda_road_active = bool(CS_SP.hdaRoadActive) if CS_SP is not None else False
     self.stock_lfa_off_requested = bool(CS_SP.stockLfaOffRequested) if CS_SP is not None else False
     self.stock_lfa_off_failed = bool(CS_SP.stockLfaOffFailed) if CS_SP is not None else False
+    self.stock_lfa_auto_suppressing = bool(CS_SP.stockLfaAutoSuppressing) if CS_SP is not None else False
+    self.stock_lfa_auto_suppress_failed = bool(CS_SP.stockLfaAutoSuppressFailed) if CS_SP is not None else False
     self.data_sample()
 
     self.update_events(CS)

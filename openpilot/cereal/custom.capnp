@@ -358,6 +358,8 @@ struct OnroadEventSP @0xda96579883444c35 {
     hdaRoadLateral @27;
     requestingStockLfaOff @28;
     stockLfaOffFailed @29;
+    suppressingStockLfa @30;
+    stockHdaHasSteering @31;
   }
 }
 
@@ -456,6 +458,8 @@ struct CarStateSP @0xb86e6369214c01c8 {
   hdaRoadActive @2 :Bool;       # ADAS ECU reports HDA available on this road with ACC engaged; lateral yields before it takes over
   stockLfaOffRequested @3 :Bool; # asking the ADAS ECU to switch its own lane centering off, at the driver's request
   stockLfaOffFailed @4 :Bool;    # it did not switch off after the last attempt
+  stockLfaAutoSuppressing @5 :Bool;    # auto-suppress is switching the car's own lane centering off at HDA arm
+  stockLfaAutoSuppressFailed @6 :Bool; # auto-suppress ran out of attempts; stock HDA keeps the steering
 }
 
 struct LiveMapDataSP @0xf416ec09499d9d19 {

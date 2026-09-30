@@ -7,19 +7,22 @@ See the LICENSE.md file in the root directory for more details.
 from openpilot.cereal import custom
 from opendbc.car import structs
 from openpilot.sunnypilot.mads.helpers import MadsSteeringModeOnBrake
-from openpilot.sunnypilot.mads.tests.test_mads_steering_mode import make_mads, make_car_state
+from openpilot.sunnypilot.mads.tests.test_mads_steering_mode import make_mads, make_car_state  # noqa: F401
 from openpilot.common.test import OpenpilotTestCase
 
 EventNameSP = custom.OnroadEventSP.EventName
 ButtonType = structs.CarState.ButtonEvent.Type
 
 
-def car_state_sp(stock_lateral_active, hda_road_active=False, lfa_off_requested=False, lfa_off_failed=False):
+def car_state_sp(stock_lateral_active, hda_road_active=False, lfa_off_requested=False, lfa_off_failed=False,
+                 auto_suppressing=False, auto_suppress_failed=False):
   cs_sp = structs.CarStateSP()
   cs_sp.stockLateralActive = stock_lateral_active
   cs_sp.hdaRoadActive = hda_road_active
   cs_sp.stockLfaOffRequested = lfa_off_requested
   cs_sp.stockLfaOffFailed = lfa_off_failed
+  cs_sp.stockLfaAutoSuppressing = auto_suppressing
+  cs_sp.stockLfaAutoSuppressFailed = auto_suppress_failed
   return cs_sp
 
 
@@ -97,9 +100,71 @@ class TestMadsStockLateral(OpenpilotTestCase):
     assert not self.sd.events_sp.has(EventNameSP.requestingStockLfaOff)
     assert not self.sd.events_sp.has(EventNameSP.stockLfaOffFailed)
 
+  def test_auto_suppress_alerts(self):
+    self.mads.enabled = True
+    self.mads.update(make_car_state(v_ego=10.0), car_state_sp(False, hda_road_active=True, auto_suppressing=True))
+    assert self.sd.events_sp.has(EventNameSP.suppressingStockLfa)
+    assert not self.sd.events_sp.has(EventNameSP.stockHdaHasSteering)
+    assert not self.sd.events_sp.has(EventNameSP.requestingStockLfaOff)
+    self.sd.events_sp.clear()
+    self.mads.update(make_car_state(v_ego=10.0), car_state_sp(False, hda_road_active=True, auto_suppress_failed=True))
+    assert self.sd.events_sp.has(EventNameSP.stockHdaHasSteering)
+    assert not self.sd.events_sp.has(EventNameSP.suppressingStockLfa)
+    self.sd.events_sp.clear()
+    self.mads.update(make_car_state(v_ego=10.0), car_state_sp(False))
+    assert not self.sd.events_sp.has(EventNameSP.suppressingStockLfa)
+    assert not self.sd.events_sp.has(EventNameSP.stockHdaHasSteering)
+
   def test_lkas_press_without_stock_lateral_still_toggles(self):
     self.mads.enabled = False
     self.sd.enabled = False
     self.mads.update(press_lkas(make_car_state(v_ego=10.0)), car_state_sp(False))
     assert self.sd.events_sp.has(EventNameSP.lkasEnable)
     assert not self.sd.events_sp.has(EventNameSP.lkasBlockedByStockLateral)
+
+
+def cruise_available(available):
+  cs = make_car_state(v_ego=10.0)
+  cs.cruiseState.available = available
+  return cs
+
+
+class TestMadsSeparateEngage(OpenpilotTestCase):
+  """LX3 option: the LFA button engages lateral only, the cruise-main button engages cruise only"""
+  def setup_method(self):
+    mocker = self._fixture("mocker")
+    self.mads, self.sd = make_mads(mocker, MadsSteeringModeOnBrake.REMAIN_ACTIVE)
+    self.mads.main_enabled_toggle = True
+    self.mads.allow_always = True  # every Hyundai CAN-FD car gets this, so the LFA button works with cruise main off
+
+  def _main_on(self):
+    self.sd.CS_prev = cruise_available(False)
+    self.mads.update(cruise_available(True), car_state_sp(False))
+
+  def _main_off(self):
+    self.mads.enabled = True
+    self.sd.CS_prev = cruise_available(True)
+    self.mads.update(cruise_available(False), car_state_sp(False))
+
+  def test_coupled_by_default(self):
+    self._main_on()
+    assert self.sd.events_sp.has(EventNameSP.lkasEnable)
+    self.sd.events_sp.clear()
+    self._main_off()
+    assert self.sd.events_sp.has(EventNameSP.lkasDisable)
+
+  def test_separate_engage_decouples_both_directions(self):
+    self.mads.separate_engage = True
+    self._main_on()
+    assert not self.sd.events_sp.has(EventNameSP.lkasEnable)
+    self.sd.events_sp.clear()
+    self._main_off()
+    assert not self.sd.events_sp.has(EventNameSP.lkasDisable)
+
+  def test_lkas_button_still_engages_with_cruise_main_off(self):
+    self.mads.separate_engage = True
+    self.mads.enabled = False
+    self.sd.enabled = False
+    self.sd.CS_prev = cruise_available(False)
+    self.mads.update(press_lkas(cruise_available(False)), car_state_sp(False))
+    assert self.sd.events_sp.has(EventNameSP.lkasEnable)

@@ -222,6 +222,24 @@ EVENTS_SP: dict[int, dict[str, Alert | AlertCallbackType]] = {
       Priority.MID, VisualAlert.none, AudibleAlert.refuse, 3.),
   },
 
+  # auto-suppress (opt-in) is pulsing the car's own lane centering off as soon as the ADAS ECU arms HDA on a road
+  EventNameSP.suppressingStockLfa: {
+    ET.WARNING: Alert(
+      "Suppressing stock lane centering",
+      "Taking back steering",
+      AlertStatus.userPrompt, AlertSize.mid,
+      Priority.LOW, VisualAlert.none, AudibleAlert.none, .2),
+  },
+
+  # auto-suppress ran out of attempts: the ADAS ECU kept its lane centering, so it owns the steering
+  EventNameSP.stockHdaHasSteering: {
+    ET.WARNING: Alert(
+      "Stock HDA active",
+      "Cancel cruise to override",
+      AlertStatus.userPrompt, AlertSize.mid,
+      Priority.MID, VisualAlert.none, AudibleAlert.refuse, 3.),
+  },
+
   # LFA button pressed while lateral is paused for the stock system: a no-entry style response with no state change,
   # shown as a warning because MADS no-entry alerts are not displayed while openpilot is PCM-enabled
   EventNameSP.lkasBlockedByStockLateral: {
