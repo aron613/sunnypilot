@@ -7,7 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 from openpilot.cereal import custom
 from opendbc.car import structs
 from openpilot.sunnypilot.mads.helpers import MadsSteeringModeOnBrake
-from openpilot.sunnypilot.mads.tests.test_mads_steering_mode import make_mads, make_car_state  # noqa: F401
+from openpilot.sunnypilot.mads.tests.test_mads_steering_mode import make_mads, make_car_state
 from openpilot.common.test import OpenpilotTestCase
 
 EventNameSP = custom.OnroadEventSP.EventName
@@ -130,7 +130,8 @@ def cruise_available(available):
 
 
 class TestMadsSeparateEngage(OpenpilotTestCase):
-  """LX3 option: the LFA button engages lateral only, the cruise-main button engages cruise only"""
+  """LX3 option: cruise engages both, the LFA button engages lateral only, and each button only switches off what it
+  switched on"""
   def setup_method(self):
     mocker = self._fixture("mocker")
     self.mads, self.sd = make_mads(mocker, MadsSteeringModeOnBrake.REMAIN_ACTIVE)
@@ -153,13 +154,35 @@ class TestMadsSeparateEngage(OpenpilotTestCase):
     self._main_off()
     assert self.sd.events_sp.has(EventNameSP.lkasDisable)
 
-  def test_separate_engage_decouples_both_directions(self):
+  def test_cruise_main_still_engages_lateral(self):
     self.mads.separate_engage = True
     self._main_on()
-    assert not self.sd.events_sp.has(EventNameSP.lkasEnable)
-    self.sd.events_sp.clear()
+    assert self.sd.events_sp.has(EventNameSP.lkasEnable)
+
+  def test_cruise_main_off_leaves_lateral_engaged(self):
+    self.mads.separate_engage = True
     self._main_off()
     assert not self.sd.events_sp.has(EventNameSP.lkasDisable)
+
+  def test_cruise_main_engages_lateral_even_with_the_general_option_off(self):
+    # the option's own description promises cruise engages both, so it takes precedence over MadsMainCruiseAllowed
+    self.mads.main_enabled_toggle = False
+    self.mads.separate_engage = True
+    self._main_on()
+    assert self.sd.events_sp.has(EventNameSP.lkasEnable)
+    self.sd.events_sp.clear()
+    self.mads.separate_engage = False
+    self._main_on()
+    assert not self.sd.events_sp.has(EventNameSP.lkasEnable)
+
+  def test_lkas_button_switches_lateral_off_on_its_own(self):
+    self.mads.separate_engage = True
+    self.mads.enabled = True
+    self.sd.enabled = False
+    self.sd.CS_prev = cruise_available(True)
+    self.mads.update(press_lkas(cruise_available(True)), car_state_sp(False))
+    assert self.sd.events_sp.has(EventNameSP.lkasDisable)
+    assert not self.sd.events_sp.has(EventNameSP.manualLongitudinalRequired)
 
   def test_lkas_button_still_engages_with_cruise_main_off(self):
     self.mads.separate_engage = True

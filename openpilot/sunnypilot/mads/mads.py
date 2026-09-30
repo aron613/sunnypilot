@@ -64,8 +64,9 @@ class ModularAssistiveDrivingSystem:
     self.main_enabled_toggle = self.params.get_bool("MadsMainCruiseAllowed")
     self.steering_mode_on_brake = read_steering_mode_param(self.CP, self.CP_SP, self.params)
     self.unified_engagement_mode = self.params.get_bool("MadsUnifiedEngagementMode")
-    # Palisade LX3 only, default off: the LFA button engages lateral only and the cruise-main button engages cruise
-    # only, so neither drags the other along. The stock-cruise handoff is what makes this safe to use.
+    # Palisade LX3 only, default off: the cruise-main button engages cruise and lateral together, as on any other
+    # stock-supported car, but turning it off only turns cruise off. Lateral is then the LFA button's alone, both to
+    # engage (it never touches cruise) and to disengage. The stock-cruise handoff is what makes this safe to use.
     if self.CP_SP.flags & HyundaiFlagsSP.CANFD_ADRV_LATERAL_TAKEOVER:
       self.separate_engage = self.params.get_bool("HyundaiLx3SeparateEngage")
 
@@ -200,7 +201,9 @@ class ModularAssistiveDrivingSystem:
         self.events.remove(EventName.pcmEnable)
         self.events.remove(EventName.buttonEnable)
     else:
-      if self.main_enabled_toggle and not self.separate_engage:
+      # separate engage still has the cruise-main button bring lateral up with it, like every other stock-supported
+      # car; it only takes precedence over MadsMainCruiseAllowed so the option's own description holds
+      if self.main_enabled_toggle or self.separate_engage:
         if CS.cruiseState.available and not self.selfdrive.CS_prev.cruiseState.available:
           self.events_sp.add(EventNameSP.lkasEnable)
 
@@ -224,7 +227,8 @@ class ModularAssistiveDrivingSystem:
         else:
           self.events_sp.add(EventNameSP.lkasEnable)
 
-    # with separate engage on, the cruise-main button owns cruise only: turning it off leaves MADS lateral alone
+    # with separate engage on, turning the cruise-main button off turns cruise off and leaves lateral engaged: the LFA
+    # button is the control that switches lateral off
     if not CS.cruiseState.available and not self.no_main_cruise and not self.separate_engage:
       self.events.remove(EventName.buttonEnable)
       if self.selfdrive.CS_prev.cruiseState.available:

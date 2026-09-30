@@ -33,8 +33,8 @@ class HyundaiSettings(BrandSettings):
       param="HyundaiLx3AutoSuppressHda")
     self.separate_engage_item = toggle_item_sp(
       title=tr("LX3 Separate cruise / lateral engage"),
-      description=tr("The LFA button engages openpilot steering only and never turns cruise on. ") +
-                  tr("The cruise button turns cruise on only, never engages steering, and turning it off leaves steering on."),
+      description=tr("Cruise engages both; LFA engages lateral only. ") +
+                  tr("Turning cruise off leaves openpilot steering engaged, and the LFA button switches steering off without touching cruise."),
       param="HyundaiLx3SeparateEngage")
     self.items = [self.longitudinal_tuning_item, self.hda_experiment_item,
                   self.auto_suppress_item, self.separate_engage_item]
