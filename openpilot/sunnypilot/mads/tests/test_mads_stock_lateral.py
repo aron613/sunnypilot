@@ -129,14 +129,15 @@ def cruise_available(available):
   return cs
 
 
-class TestMadsSeparateEngage(OpenpilotTestCase):
-  """LX3 option: cruise engages both, the LFA button engages lateral only, and each button only switches off what it
-  switched on"""
+class TestMadsLateralSurvivesMainOff(OpenpilotTestCase):
+  """LX3 behavior, not an option: cruise engages both, but turning cruise main off leaves lateral engaged and the LFA
+  button is what switches it off"""
   def setup_method(self):
     mocker = self._fixture("mocker")
     self.mads, self.sd = make_mads(mocker, MadsSteeringModeOnBrake.REMAIN_ACTIVE)
     self.mads.main_enabled_toggle = True
     self.mads.allow_always = True  # every Hyundai CAN-FD car gets this, so the LFA button works with cruise main off
+    self.mads.keep_lateral_on_main_off = True  # set from the platform flag on the LX3
 
   def _main_on(self):
     self.sd.CS_prev = cruise_available(False)
@@ -147,36 +148,27 @@ class TestMadsSeparateEngage(OpenpilotTestCase):
     self.sd.CS_prev = cruise_available(True)
     self.mads.update(cruise_available(False), car_state_sp(False))
 
-  def test_coupled_by_default(self):
-    self._main_on()
-    assert self.sd.events_sp.has(EventNameSP.lkasEnable)
-    self.sd.events_sp.clear()
-    self._main_off()
-    assert self.sd.events_sp.has(EventNameSP.lkasDisable)
-
   def test_cruise_main_still_engages_lateral(self):
-    self.mads.separate_engage = True
     self._main_on()
     assert self.sd.events_sp.has(EventNameSP.lkasEnable)
 
   def test_cruise_main_off_leaves_lateral_engaged(self):
-    self.mads.separate_engage = True
     self._main_off()
     assert not self.sd.events_sp.has(EventNameSP.lkasDisable)
 
-  def test_cruise_main_engages_lateral_even_with_the_general_option_off(self):
-    # the option's own description promises cruise engages both, so it takes precedence over MadsMainCruiseAllowed
+  def test_cruise_main_engage_follows_the_general_setting(self):
+    # nothing special on the engage side: the cruise-main button brings lateral up exactly as on any other
+    # stock-supported car, so the general MadsMainCruiseAllowed setting still decides
     self.mads.main_enabled_toggle = False
-    self.mads.separate_engage = True
-    self._main_on()
-    assert self.sd.events_sp.has(EventNameSP.lkasEnable)
-    self.sd.events_sp.clear()
-    self.mads.separate_engage = False
     self._main_on()
     assert not self.sd.events_sp.has(EventNameSP.lkasEnable)
 
+  def test_main_off_still_disables_lateral_on_other_cars(self):
+    self.mads.keep_lateral_on_main_off = False
+    self._main_off()
+    assert self.sd.events_sp.has(EventNameSP.lkasDisable)
+
   def test_lkas_button_switches_lateral_off_on_its_own(self):
-    self.mads.separate_engage = True
     self.mads.enabled = True
     self.sd.enabled = False
     self.sd.CS_prev = cruise_available(True)
@@ -185,7 +177,6 @@ class TestMadsSeparateEngage(OpenpilotTestCase):
     assert not self.sd.events_sp.has(EventNameSP.manualLongitudinalRequired)
 
   def test_lkas_button_still_engages_with_cruise_main_off(self):
-    self.mads.separate_engage = True
     self.mads.enabled = False
     self.sd.enabled = False
     self.sd.CS_prev = cruise_available(False)

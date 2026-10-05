@@ -225,9 +225,6 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
 
     // sunnypilot car specific params
     {"HyundaiLongitudinalTuning", {PERSISTENT | BACKUP, INT, "0"}},
-    {"HyundaiLx3HdaSuppressionExperiment", {PERSISTENT, INT, "1"}},  // 1 HDA suppression (default), 0 off (stock-cruise lateral gate)
-    {"HyundaiLx3AutoSuppressHda", {PERSISTENT, BOOL, "0"}},  // pulse the car's own lane centering off as soon as HDA arms
-    {"HyundaiLx3SeparateEngage", {PERSISTENT, BOOL, "0"}},  // LFA button = lateral only, cruise main = cruise only
     {"SubaruStopAndGo", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"SubaruStopAndGoManualParkingBrake", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TeslaCoopSteering", {PERSISTENT | BACKUP, BOOL, "0"}},

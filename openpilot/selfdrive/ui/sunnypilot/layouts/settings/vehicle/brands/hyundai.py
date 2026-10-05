@@ -7,7 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.base import BrandSettings
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.multilang import tr
-from openpilot.system.ui.sunnypilot.widgets.list_view import multiple_button_item_sp, toggle_item_sp
+from openpilot.system.ui.sunnypilot.widgets.list_view import multiple_button_item_sp
 from opendbc.car.hyundai.values import CAR, UNSUPPORTED_LONGITUDINAL_CAR
 
 
@@ -20,32 +20,11 @@ class HyundaiSettings(BrandSettings):
     self.longitudinal_tuning_item = multiple_button_item_sp(tr("Custom Longitudinal Tuning"), "", tuning_texts,
                                                             button_width=300, callback=self._on_tuning_selected,
                                                             param="HyundaiLongitudinalTuning", inline=False)
-    hda_texts = [tr("Off"), tr("On")]
-    self.hda_experiment_item = multiple_button_item_sp(tr("LX3 HDA Suppression"), "", hda_texts,
-                                                       button_width=250, callback=self._on_hda_experiment_selected,
-                                                       param="HyundaiLx3HdaSuppressionExperiment", inline=False)
-    self.auto_suppress_item = toggle_item_sp(
-      title=tr("LX3 Auto-suppress HDA"),
-      description=tr("Switch the car's own lane centering off as soon as the car flags an HDA road, instead of waiting for you to press the LFA button. ") +
-                  tr("Expect a nudge from the car for 0.3 to 1.3 seconds as HDA arms, then openpilot has the wheel. ") +
-                  tr("If the car refuses, stock HDA keeps the steering and the screen says so; cancel cruise to override. ") +
-                  tr("Pressing the LFA button yourself works whether this is on or off."),
-      param="HyundaiLx3AutoSuppressHda")
-    self.separate_engage_item = toggle_item_sp(
-      title=tr("LX3 Separate cruise / lateral engage"),
-      description=tr("Cruise engages both; LFA engages lateral only. ") +
-                  tr("Turning cruise off leaves openpilot steering engaged, and the LFA button switches steering off without touching cruise."),
-      param="HyundaiLx3SeparateEngage")
-    self.items = [self.longitudinal_tuning_item, self.hda_experiment_item,
-                  self.auto_suppress_item, self.separate_engage_item]
+    self.items = [self.longitudinal_tuning_item]
 
   @staticmethod
   def _on_tuning_selected(index):
     ui_state.params.put("HyundaiLongitudinalTuning", index)
-
-  @staticmethod
-  def _on_hda_experiment_selected(index):
-    ui_state.params.put("HyundaiLx3HdaSuppressionExperiment", index)
 
   def update_settings(self):
     self.alpha_long_available = False
@@ -78,31 +57,3 @@ class HyundaiSettings(BrandSettings):
     self.longitudinal_tuning_item.show_description(True)
     self.longitudinal_tuning_item.action_item.set_selected_button(tuning_param)
     self.longitudinal_tuning_item.set_visible(self.alpha_long_available)
-
-    # Palisade LX3 only: HDA suppression (stock cruise + openpilot lateral), default On
-    is_lx3 = False
-    if bundle:
-      is_lx3 = bundle.get("platform") == CAR.HYUNDAI_PALISADE_LX3
-    elif ui_state.CP is not None:
-      is_lx3 = ui_state.CP.carFingerprint == CAR.HYUNDAI_PALISADE_LX3
-    hda_param = int(ui_state.params.get("HyundaiLx3HdaSuppressionExperiment") or "0")
-    hda_descs = [
-      tr("Off: openpilot pauses steering while stock cruise is engaged."),
-      tr("On: openpilot keeps steering with stock cruise on by reporting LFA inactive to the ADAS ECU. The relay watchdog drops lateral on takeover."),
-    ]
-    hda_desc = hda_descs[hda_param] if hda_param < len(hda_descs) else hda_descs[0]
-    if not ui_state.is_offroad():
-      hda_desc = tr("This feature is unavailable while the car is onroad.")
-    self.hda_experiment_item.action_item.set_enabled(ui_state.is_offroad())
-    self.hda_experiment_item.set_description(hda_desc)
-    self.hda_experiment_item.show_description(True)
-    self.hda_experiment_item.action_item.set_selected_button(hda_param)
-    self.hda_experiment_item.set_visible(is_lx3)
-
-    for item in (self.auto_suppress_item, self.separate_engage_item):
-      item.set_visible(is_lx3)
-      item.action_item.set_enabled(ui_state.is_offroad())
-      item.show_description(True)
-    if not ui_state.is_offroad():
-      for item in (self.auto_suppress_item, self.separate_engage_item):
-        item.set_description(tr("This feature is unavailable while the car is onroad."))

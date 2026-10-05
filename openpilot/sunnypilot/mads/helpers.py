@@ -53,43 +53,6 @@ def set_alternative_experience(CP: structs.CarParams, CP_SP: structs.CarParamsSP
       CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.MADS_PAUSE_LATERAL_ON_BRAKE
 
 
-HDA_EXPERIMENT_FLAGS = {
-  1: HyundaiFlagsSP.CANFD_HDA_EXP_LFA_STATUS,
-}
-
-
-def set_hyundai_hda_suppression_experiment(CP_SP: structs.CarParamsSP, params: Params) -> int:
-  """Palisade LX3 only (CANFD_ADRV_LATERAL_TAKEOVER): HDA suppression keeps the ADRV relaying our steering while stock
-  ACC is engaged (1, the default, verified on routes 00000035 and 00000037). 0 keeps the stock-cruise lateral gate
-  instead. Either way the ADRV relay watchdog stays armed. The selection is written to CP_SP.hdaSuppressionExperiment
-  so every route logs what ran. Anything else, and any other car, is treated as 0."""
-  if not (CP_SP.flags & HyundaiFlagsSP.CANFD_ADRV_LATERAL_TAKEOVER):
-    return 0
-  try:
-    experiment = int(params.get("HyundaiLx3HdaSuppressionExperiment", return_default=True) or 0)
-  except (TypeError, ValueError):
-    experiment = 0
-  if experiment not in HDA_EXPERIMENT_FLAGS:
-    experiment = 0
-  if experiment:
-    CP_SP.flags |= HDA_EXPERIMENT_FLAGS[experiment].value
-  CP_SP.hdaSuppressionExperiment = experiment
-  return experiment
-
-
-def set_hyundai_auto_suppress_hda(CP_SP: structs.CarParamsSP, params: Params) -> bool:
-  """Palisade LX3 only (CANFD_ADRV_LATERAL_TAKEOVER), default off: pulse the car's own lane centering off as soon as the
-  ADAS ECU arms HDA on a road, the same way a driver LFA press does. The car still nudges the wheel for 0.3-1.3 s
-  first: it switches its lane centering on 0.05 s after the HDA icon, we need 0.06 s to confirm the icon over two 20 Hz
-  messages, and it takes 0.15-0.18 s to acknowledge the press. See opendbc stock_lfa.py."""
-  if not (CP_SP.flags & HyundaiFlagsSP.CANFD_ADRV_LATERAL_TAKEOVER):
-    return False
-  if params.get_bool("HyundaiLx3AutoSuppressHda"):
-    CP_SP.flags |= HyundaiFlagsSP.CANFD_AUTO_SUPPRESS_HDA.value
-    return True
-  return False
-
-
 def set_car_specific_params(CP: structs.CarParams, CP_SP: structs.CarParamsSP, params: Params):
   if CP.brand == "hyundai":
     # TODO-SP: This should be separated from MADS module for future implementations
@@ -99,8 +62,6 @@ def set_car_specific_params(CP: structs.CarParams, CP_SP: structs.CarParamsSP, p
       CP_SP.flags |= HyundaiFlagsSP.LONGITUDINAL_MAIN_CRUISE_TOGGLEABLE.value
       CP_SP.safetyParam |= HyundaiSafetyFlagsSP.LONG_MAIN_CRUISE_TOGGLEABLE
 
-    set_hyundai_hda_suppression_experiment(CP_SP, params)
-    set_hyundai_auto_suppress_hda(CP_SP, params)
 
   # MADS Partial Support
   # MADS is currently partially supported for these platforms due to lack of consistent states to engage controls

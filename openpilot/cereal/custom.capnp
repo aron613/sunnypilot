@@ -369,7 +369,7 @@ struct CarParamsSP @0x80ae746ee2596b11 {
   pcmCruiseSpeed @3 :Bool;
   intelligentCruiseButtonManagementAvailable @4 :Bool;
   enableGasInterceptor @5 :Bool;
-  hdaSuppressionExperiment @6 :UInt8;  # Palisade LX3: 0 off, 1 A, 2 B, 3 A+B; the marker for which experiment a route ran
+  hdaSuppressionExperiment @6 :UInt8;  # Palisade LX3, no longer written: the marker for which experiment a route ran
 
   neuralNetworkLateralControl @2 :NeuralNetworkLateralControl;
 
@@ -454,7 +454,7 @@ struct BackupManagerSP @0xf98d843bfd7004a3 {
 
 struct CarStateSP @0xb86e6369214c01c8 {
   speedLimit @0 :Float32;
-  stockLateralActive @1 :Bool;  # the car's own lane centering owns the steering; openpilot lateral must yield
+  stockLateralActive @1 :Bool;  # the car's own lane centering owns the steering; openpilot lateral must yield (no platform sets this today)
   hdaRoadActive @2 :Bool;       # ADAS ECU reports HDA available on this road with ACC engaged; lateral yields before it takes over
   stockLfaOffRequested @3 :Bool; # asking the ADAS ECU to switch its own lane centering off, at the driver's request
   stockLfaOffFailed @4 :Bool;    # it did not switch off after the last attempt
